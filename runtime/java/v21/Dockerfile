@@ -19,11 +19,12 @@
 ARG COMMON=missing:missing
 FROM ${COMMON} as builder
 
-# Use Amazon corretto
-FROM amazoncorretto:21
+FROM ubuntu:22.04
 
-RUN yum update -y \    
-    && yum install -y locales python vim
+# install Python
+RUN apt-get update && apt-get -y upgrade &&\
+    apt-get -y install apt-utils python3.10 python3.10-venv curl sudo telnet inetutils-ping zip unzip locales vim java-common\
+	&& locale-gen en_US.UTF-8
 
 ENV LANG="en_US.UTF-8" \
 	LANGUAGE="en_US:en" \
@@ -31,6 +32,13 @@ ENV LANG="en_US.UTF-8" \
 	VERSION=21 \
 	UPDATE=0 \
 	BUILD=2
+
+# Use Amazon corretto
+RUN \
+    VER=21 ;\
+    ARCH=$(if arch | grep x86_64 >/dev/null ; then echo "x64" ; else echo "aarch64" ; fi) ;\
+    curl -sL https://corretto.aws/downloads/latest/amazon-corretto-${VER}-${ARCH}-linux-jdk.deb >jdk.deb ;\
+    dpkg -i jdk.deb ; rm jdk.deb  	
 
 RUN locale-gen en_US.UTF-8 ;\
     mkdir -p /javaAction/action /usr/java/src /usr/java/lib
