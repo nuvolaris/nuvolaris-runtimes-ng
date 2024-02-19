@@ -20,7 +20,7 @@ ARG COMMON=missing:missing
 FROM ${COMMON} as builder
 
 # Use Amazon corretto
-FROM amazoncorretto:8
+FROM amazoncorretto:21
 
 RUN yum update -y \    
     && yum install -y locales python vim
@@ -28,9 +28,9 @@ RUN yum update -y \
 ENV LANG="en_US.UTF-8" \
 	LANGUAGE="en_US:en" \
 	LC_ALL="en_US.UTF-8" \
-	VERSION=8 \
-	UPDATE=402 \
-	BUILD=06
+	VERSION=21 \
+	UPDATE=0 \
+	BUILD=2
 
 RUN locale-gen en_US.UTF-8 ;\
     mkdir -p /javaAction/action /usr/java/src /usr/java/lib
@@ -48,5 +48,5 @@ ADD bin/compile /bin/compile
 ENV OW_COMPILER=/bin/compile
 ENV OW_SAVE_JAR=exec.jar
 # using the runtime name to identify the execution environment
-ENV OW_EXECUTION_ENV=openwhisk/action-java-v8
+ENV OW_EXECUTION_ENV=openwhisk/action-java-v21
 ENTRYPOINT /bin/proxy
