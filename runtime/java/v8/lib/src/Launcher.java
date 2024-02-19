@@ -204,4 +204,3 @@ class Launcher {
         uninstallSecurityManager();
     }
 }
-
