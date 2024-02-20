@@ -1,0 +1,74 @@
+version: '3'
+
+dotenv: [.env]
+
+vars:
+  DRY: ""
+  PUSH: ""
+  BASETAG: 3.1.0-mastrogpt
+  BASEIMG: ghcr.io/nuvolaris 
+  COMMON_VER: common1.17.1
+  COMMON: "{{.BASEIMG}}/runtime-common:{{.COMMON_VER}}"
+  TAG:
+    sh: git describe --tags --abbrev=0 2>/dev/null || echo latest
+
+tasks:
+
+  default:
+  - task --list-all
+
+  setup: { silent: true}
+
+  image-tag: 
+    silent: true
+    cmds:
+    - git tag -d $(git tag) 
+    - git tag -f {{.BASETAG}}.$(date +%y%m%d%H%M)
+    - env PAGER= git tag
+
+  compile: go build -o proxy
+
+  test: 
+    dir: openwhisk
+    cmds:
+    - go test -v
+
+  docker-login: 
+    - echo $GITHUB_TOKEN | docker login -u $GITHUB_USER --password-stdin  ghcr.io 
+    - docker run -it --rm --privileged tonistiigi/binfmt --install all
+
+  build-common:
+    dir: "runtime/common/{{.COMMON_VER}}"
+    cmds:
+    - task: docker-login
+    - docker buildx build -t "{{.COMMON}}" --platform linux/amd64,linux/arm64 . --push
+
+  build-runtime:
+    requires: { vars: [RT, VER] } 
+    dir: "runtime/{{.RT}}/{{.VER}}"
+    cmds:
+    - task: docker-login
+    - |
+      RUNTIME="{{.BASEIMG}}/runtime-{{.RT}}-{{.VER}}"
+      if test -n "{{.PUSH}}"
+      then {{.DRY}} docker buildx build -t "$RUNTIME:{{.TAG}}" --build-arg COMMON="{{.COMMON}}" --platform linux/amd64,linux/arm64 . --push
+      else {{.DRY}} docker buildx build -t "$RUNTIME:{{.TAG}}" --build-arg COMMON="{{.COMMON}}" . --load
+      fi
+
+  build-lang: 
+    desc: build images for one runtime
+    requires: {vars: [RT] }
+    vars:
+      DIRS:
+        sh: ls -d  runtime/{{.RT}}/v* || echo ""
+    cmds:
+      - for: { var: DIRS }
+        task: build-runtime
+        vars:
+          VER: "{{base .ITEM}}"
+
+
+  build:
+    - task: docker-login
+    - task build-lang RT=golang
+
